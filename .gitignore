@@ -1,0 +1,5 @@
+test/*
+cache/*
+public_html/phpinfo.php
+.settings/*
+.project
