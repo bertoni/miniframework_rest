@@ -66,7 +66,6 @@ abstract class System implements \standard\IController
             http_response_code(405);
             header('Allow: GET');
             exit;
-            
         }
         http_response_code(200);
         
@@ -83,10 +82,11 @@ abstract class System implements \standard\IController
         
         // Generates the response content
         $doc   = array();
-        $doc['/user']['GET'] = array(
-            'needs'         => 'Header access_token',
+        $doc['/']['GET'] = array(
+            'needs'         => 'nothing',
+            'profile'       => 'all',
             'views'         => array('json', 'xml'),
-            'functionality' => 'lista os usuários'
+            'functionality' => 'Exibe o guia do usuário da API'
         );
         
         // Show the response

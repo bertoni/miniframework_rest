@@ -66,3 +66,17 @@ require_once 'autoload.inc.php';
 require_once 'library.inc.php';
 require_once 'collection.inc.php';
 require_once 'route.inc.php';
+
+/**
+ * Gravo a conexão com o banco de dados da aplicação
+ */
+$REGISTRY = \helper\Registry::getInstance();
+if (!$REGISTRY->exists('dbmysql')) {
+    $options = array(
+        \PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+        \PDO::ATTR_PERSISTENT         => true,
+        \PDO::ATTR_CASE               => \PDO::CASE_LOWER
+    );
+    $REGISTRY->register('dbmysql', new \helper\ConnectionDB(DB_CONN, DB_USER, DB_PASS, $options));
+    unset($options);
+}
