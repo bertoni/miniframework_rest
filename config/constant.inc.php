@@ -88,7 +88,12 @@ if (!defined('APP_IN_USE')) {
     unset($app);
 }
 if (!defined('DB_CONN')) {
-    define('DB_CONN', (DEV ? 'mysql:host=localhost;port=3306;dbname=transportmanagerv2' : 'mysql:host=localhost;port=3306;dbname=transpor_prod'));
-    define('DB_USER', (DEV ? 'root' : 'transpor_app'));
-    define('DB_PASS', (DEV ? 'root' : 'TzTi51SRV$J4'));
+    define(
+        'DB_CONN',
+        (DEV ?
+            'mysql:host=localhost;port=3306;dbname=transportmanagerv2'
+            : 'mysql:host=localhost;port=3306;dbname=xxxx')
+    );
+    define('DB_USER', (DEV ? 'root' : 'xxxxx'));
+    define('DB_PASS', (DEV ? 'root' : 'xxxxx'));
 }

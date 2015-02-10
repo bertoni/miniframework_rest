@@ -77,6 +77,9 @@ if (!$REGISTRY->exists('dbmysql')) {
         \PDO::ATTR_PERSISTENT         => true,
         \PDO::ATTR_CASE               => \PDO::CASE_LOWER
     );
-    $REGISTRY->register('dbmysql', new \helper\ConnectionDB(DB_CONN, DB_USER, DB_PASS, $options));
+    $REGISTRY->register(
+        'dbmysql',
+        new \helper\ConnectionDB(DB_CONN, DB_USER, DB_PASS, $options)
+    );
     unset($options);
 }
