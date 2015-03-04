@@ -87,47 +87,14 @@ class RequestHTTP
     }
 
     /**
-     * Return if the request method was by GET
+     * Return the HTTP method current
      *
-     * @return boolean
+     * @return string
      * @access public
      */
-    public function isGet()
+    public function getHttpMethod()
     {
-        return $_SERVER['REQUEST_METHOD'] == 'GET';
-    }
-
-    /**
-     * Return if the request method was by POST
-     *
-     * @return boolean
-     * @access public
-     */
-    public function isPost()
-    {
-        return $_SERVER['REQUEST_METHOD'] == 'POST';
-    }
-
-    /**
-     * Return if the request method was by PUT
-     *
-     * @return boolean
-     * @access public
-     */
-    public function isPut()
-    {
-        return $_SERVER['REQUEST_METHOD'] == 'PUT';
-    }
-
-    /**
-     * Return if the request method was by DELETE
-     *
-     * @return boolean
-     * @access public
-     */
-    public function isDelete()
-    {
-        return $_SERVER['REQUEST_METHOD'] == 'DELETE';
+        return $_SERVER['REQUEST_METHOD'];
     }
 
     /**
@@ -174,11 +141,15 @@ class RequestHTTP
      */
     private function _parsePutDelete()
     {
-        if ($this->isPut() || $this->isDelete()) {
+        if ($this->getHttpMethod() == 'PUT' || $this->getHttpMethod() == 'DELETE') {
             $var = array();
             parse_str(file_get_contents('php://input'), $var);
             if (count($var)) {
-                $this->{($this->isPut() ? 'put' : 'delete')} = $var;
+                $this->{mb_convert_case(
+                    $this->getHttpMethod(),
+                    MB_CASE_LOWER,
+                    'UTF-8'
+                )} = $var;
             }
         }
     }

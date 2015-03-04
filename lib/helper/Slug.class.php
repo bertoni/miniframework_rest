@@ -43,6 +43,7 @@ abstract class Slug
      * @param string $application {Route's application}
      * @param string $label       {Route's nick}
      * @param string $url         {Route's URL}
+     * @param array  $methods     {Available HTTP methods for the URL}
      * @param array  $args        {Route's variables}
      * @param array  $validators  {Special validators of the route}
      *
@@ -53,6 +54,7 @@ abstract class Slug
         $application,
         $label,
         $url,
+        array $methods,
         array $args       = array(),
         array $validators = array()
     ) {
@@ -61,7 +63,14 @@ abstract class Slug
             && !preg_match('/(\:[0-9a-zA-Z_]){1,}/', $url)
         ) {
             self::_setRoute(
-                $application, 'static', $label, $url, $url, $args, $validators
+                $application,
+                'static',
+                $label,
+                $url,
+                $methods,
+                $url,
+                $args,
+                $validators
             );
         } else {
             $pattern = preg_replace('/\//', '\/', $url);
@@ -89,6 +98,7 @@ abstract class Slug
                     'dynamic',
                     $label,
                     $url,
+                    $methods,
                     $pattern,
                     $args,
                     $validators
@@ -105,6 +115,7 @@ abstract class Slug
                     'magic',
                     $label,
                     $url,
+                    $methods,
                     $pattern,
                     $args,
                     $validators
@@ -118,17 +129,27 @@ abstract class Slug
      *
      * @param string $application {Route's application}
      * @param string $name        {Route's nick}
+     * @param string $method      {Route's HTTP method}
      * @param array  $args        {Route's variables}
      *
      * @access public
      * @return string
      */
-    public static function getUrl($application, $name, array $args = array())
-    {
+    public static function getUrl(
+        $application,
+        $name,
+        $method,
+        array $args = array()
+    ) {
         if (isset(self::$route[$application])) {
             if (isset(self::$route[$application]['static'])) {
                 foreach (self::$route[$application]['static'] as $label=>$data) {
                     if ($name === $label) {
+                        if (!self::_checksHttpMethodInRoute(
+                            $application, 'static', $label, $method
+                        )) {
+                            return '';
+                        }
                         return $data['url'];
                     }
                 }
@@ -136,21 +157,26 @@ abstract class Slug
             if (isset(self::$route[$application]['dynamic'])) {
                 foreach (self::$route[$application]['dynamic'] as $label=>$data) {
                     if ($name === $label) {
+                        if (!self::_checksHttpMethodInRoute(
+                            $application, 'dynamic', $label, $method
+                        )) {
+                            return '';
+                        }
                         preg_match_all(
                             '/\:([0-9a-zA-Z_]{1,})/', $data['url'], $variables
                         );
                         $correct_param = true;
                         foreach ($variables[1] as $var) {
                             $correct_param = $correct_param
-                                             && array_key_exists($var, $args)
-                                             && preg_match(
-                                                 (isset($data['validators'][$var])
-                                                     ? '/^'
-                                                        . $data['validators'][$var]
-                                                        . '$/'
-                                                     : '/^[a-zA-Z0-9-]{1,}$/'),
-                                                 $args[$var]
-                                             );
+                                 && array_key_exists($var, $args)
+                                 && preg_match(
+                                     (isset($data['validators'][$method][$var])
+                                         ? '/^'
+                                            . $data['validators'][$method][$var]
+                                            . '$/'
+                                         : '/^[a-zA-Z0-9-]{1,}$/'),
+                                     $args[$var]
+                                 );
                         }
                         if ($correct_param) {
                             foreach ($variables[1] as $var) {
@@ -166,6 +192,11 @@ abstract class Slug
             if (isset(self::$route[$application]['magic'])) {
                 foreach (self::$route[$application]['magic'] as $label=>$data) {
                     if ($name === $label) {
+                        if (!self::_checksHttpMethodInRoute(
+                            $application, 'magic', $label, $method
+                        )) {
+                            return '';
+                        }
                         preg_match_all(
                             '/\:([0-9a-zA-Z_]{1,})/', $data['url'], $variables
                         );
@@ -174,8 +205,9 @@ abstract class Slug
                             $correct_param = $correct_param
                             && array_key_exists($var, $args)
                             && preg_match(
-                                (isset($data['validators'][$var]) 
-                                    ? '/^' . $data['validators'][$var] . '$/'
+                                (isset($data['validators'][$method][$var]) 
+                                    ? '/^' . $data['validators'][$method][$var]
+                                        . '$/'
                                     : '/^[a-zA-Z0-9-]{1,}$/'),
                                 $args[$var]
                             );
@@ -214,17 +246,33 @@ abstract class Slug
      *
      * @param string $application {Route's application}
      * @param string $url         {URL to be decoded}
+     * @param string $method      {Route's HTTP method}
      *
      * @access public
      * @return boolean
      */
-    public static function decodeUrl($application, $url)
+    public static function decodeUrl($application, $url, $method)
     {
         if (isset(self::$route[$application])) {
             if (isset(self::$route[$application]['static'])) {
                 foreach (self::$route[$application]['static'] as $label=>$data) {
                     if ($url === $data['pattern']) {
-                        self::$parameters = $data['args'];
+                        if (!self::_checksHttpMethodInRoute(
+                            $application, 'static', $label, $method
+                        )) {
+                            http_response_code(405);
+                            header(
+                                'Allow: ' . implode(
+                                    ', ',
+                                    self::$route[$application]['static']
+                                    [$label]['methods']
+                                )
+                            );
+                            return false;
+                        }
+                        if (isset($data['args'][$method])) {
+                            self::$parameters = $data['args'][$method];
+                        }
                         return true;
                     }
                 }
@@ -232,7 +280,25 @@ abstract class Slug
             if (isset(self::$route[$application]['dynamic'])) {
                 foreach (self::$route[$application]['dynamic'] as $label=>$data) {
                     if (preg_match('/^' . $data['pattern'] . '$/', $url, $matchs)) {
-                        self::$parameters = array_merge($data['args'], $matchs);
+                        if (!self::_checksHttpMethodInRoute(
+                            $application, 'dynamic', $label, $method
+                        )) {
+                            http_response_code(405);
+                            header(
+                                'Allow: ' . implode(
+                                    ', ',
+                                    self::$route[$application]['dynamic']
+                                    [$label]['methods']
+                                )
+                            );
+                            return false;
+                        }
+                        self::$parameters = array_merge(
+                            (isset($data['args'][$method])
+                                ? $data['args'][$method]
+                                : array()),
+                            $matchs
+                        );
                         return true;
                     }
                 }
@@ -240,17 +306,35 @@ abstract class Slug
             if (isset(self::$route[$application]['magic'])) {
                 foreach (self::$route[$application]['magic'] as $label=>$data) {
                     if (preg_match('/^' . $data['pattern'] . '$/', $url, $matchs)) {
+                        if (!self::_checksHttpMethodInRoute(
+                            $application, 'magic', $label, $method
+                        )) {
+                            http_response_code(405);
+                            header(
+                                'Allow: ' . implode(
+                                    ', ',
+                                    self::$route[$application]['magic']
+                                    [$label]['methods']
+                                )
+                            );
+                            return false;
+                        }
                         $args = explode('/', $matchs['_arg']);
                         array_shift($args);
                         $max = count($args);
-                        if ($max) {
+                        if ($max && isset($data['args'][$method])) {
                             for ($i=0; $i<$max; $i++) {
-                                $data['args'][$args[$i]] = $args[++$i];
+                                $data['args'][$method][$args[$i]] = $args[++$i];
                             }
                         }
                         $matchs['_arg'] = null;
                         unset($matchs['_arg']);
-                        self::$parameters = array_merge($data['args'], $matchs);
+                        self::$parameters = array_merge(
+                            (isset($data['args'][$method])
+                                ? $data['args'][$method]
+                                : array()),
+                            $matchs
+                        );
                         return true;
                     }
                 }
@@ -298,11 +382,12 @@ abstract class Slug
      * @param string $type        {Route's type}
      * @param string $label       {Route's nick}
      * @param string $url         {Route's URL}
+     * @param array  $methods     {Available HTTP methods for the URL}
      * @param string $pattern     {Route's regular expression}
      * @param array  $args        {Route's variables}
      * @param array  $validators  {Special validators of the route}
      *
-     * @access public
+     * @access private
      * @return void
      */
     private static function _setRoute(
@@ -310,6 +395,7 @@ abstract class Slug
         $type,
         $label,
         $url,
+        array $methods,
         $pattern,
         array $args       = array(),
         array $validators = array()
@@ -317,8 +403,28 @@ abstract class Slug
         self::$route[$application][$type][$label] = array(
             'url'        => $url,
             'pattern'    => $pattern,
+            'methods'    => $methods,
             'args'       => $args,
             'validators' => $validators
+        );
+    }
+
+    /**
+     * Function that checks if the route supports a specific HTTP method
+     *
+     * @param string $application {Route's application}
+     * @param string $type        {Route's type}
+     * @param string $label       {Route's nick}
+     * @param string $method      {HTTP method to be validated}
+     *
+     * @access public
+     * @return boolean
+     */
+    private static function _checksHttpMethodInRoute(
+        $application, $type, $label, $method
+    ) {
+        return in_array(
+            $method, self::$route[$application][$type][$label]['methods']
         );
     }
 

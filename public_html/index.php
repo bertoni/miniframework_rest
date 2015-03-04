@@ -11,26 +11,26 @@
  * @link     http://www.linkedin.com/pub/arnaldo-bertoni-junior/58/7aa/213
  */
 require_once dirname(__FILE__) . '/../config/default.inc.php';
- 
+
  // CodeSniffer
 if (DEV && APP_IN_USE == 'codesniffer') {
     include dirname(__FILE__) . '/../test/codesniffer/index.php';
     exit;
 }
 
+$RequestHTTP    = helper\RequestHTTP::getInstance();
 $url_request    = explode('?', $_SERVER['REQUEST_URI'], 2);
 $url            = $url_request[0];
 $parameters_get = (isset($url_request[1]) && !empty($url_request[1])
                   ? $url_request[1] : null);
 
 // Checks if exists some route to this URL
-if (helper\Slug::decodeUrl(APP_IN_USE, $url)) {
+if (helper\Slug::decodeUrl(APP_IN_USE, $url, $RequestHTTP->getHttpMethod())) {
     try {
         $Controller = APP_IN_USE . '\\controller\\'
                       . helper\Slug::$parameters['controller'];
         $Controller::request(
             helper\Slug::$parameters['action'],
-            helper\RequestHTTP::getInstance(),
             helper\Slug::$parameters
         );
         exit;
@@ -59,5 +59,8 @@ if (helper\Slug::decodeUrl(APP_IN_USE, $url)) {
             . (preg_match('/(.)+\.(html|php)$/', $url) ? null : '.php');
     exit;
 } else {
-    http_response_code(404);exit;
+    if (http_response_code() == 200) {
+        http_response_code(404);
+    }
+    exit;
 }

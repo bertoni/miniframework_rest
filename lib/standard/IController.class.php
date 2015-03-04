@@ -25,16 +25,11 @@ interface IController
     /**
      * Function that makes a request
      *
-     * @param string      $action      {Action to be executed}
-     * @param RequestHTTP $RequestHTTP {RequestHTTP of the request}
-     * @param array       $parameters  {Request parameters}
+     * @param string $action     {Action to be executed}
+     * @param array  $parameters {Request parameters}
      *
      * @return string
      * @access public
      */
-    public static function request(
-        $action,
-        \helper\RequestHTTP $RequestHTTP,
-        array $parameters
-    );
+    public static function request($action, array $parameters);
 }

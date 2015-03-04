@@ -23,55 +23,21 @@ namespace api\controller;
 abstract class System implements \standard\IController
 {
     /**
-     * Methods supported for each action
-     *
-     * @var    array
-     * @access protected
-     */
-    protected static $methods_supported = array(
-        '_userGuide' => 'GET'
-    );
-
-    /**
      * Function that makes a request
      *
-     * @param string      $action      {Action to be executed}
-     * @param RequestHTTP $RequestHTTP {RequestHTTP of the request}
-     * @param array       $parameters  {Request parameters}
+     * @param string $action     {Action to be executed}
+     * @param array  $parameters {Request parameters}
      *
      * @return string
      * @access public
      */
-    public static function request(
-        $action,
-        \helper\RequestHTTP $RequestHTTP,
-        array $parameters = null
-    ) {
+    public static function request($action, array $parameters = null)
+    {
         $action = '_' . $action;
         if (method_exists(__CLASS__, $action)) {
-            // Checks the methods supported
-            if (!preg_match('/\*/', self::$methods_supported[$action])) {
-                $liberate = false;
-                $methods  = explode('|', self::$methods_supported[$action]);
-                foreach ($methods as $method) {
-                    $method   = 'is' . mb_convert_case(
-                        $method,
-                        MB_CASE_TITLE,
-                        'UTF-8'
-                    );
-                    $liberate = $RequestHTTP->$method();
-                    if ($liberate) {
-                        break;
-                    }
-                }
-                if (!$liberate) {
-                    http_response_code(405);
-                    header('Allow: ' . implode(', ', $methods));
-                    exit;
-                }
-            }
             // Defines the response type
             $accept            = '*';
+            $RequestHTTP       = \helper\RequestHTTP::getInstance();
             $Registry          = \helper\Registry::getInstance();
             $supported_formats = $Registry->get('supported_formats');
             foreach ($RequestHTTP->accept as $acc) {
@@ -81,7 +47,7 @@ abstract class System implements \standard\IController
                 }
             }
             $View = \standard\View::getViewer($accept);
-            self::$action($RequestHTTP, $View, $parameters);
+            self::$action($View, $parameters);
         } else {
             throw new \Exception(
                 'Not exists the ' . $action
@@ -93,15 +59,13 @@ abstract class System implements \standard\IController
     /**
      * Shows the API utilization guide
      *
-     * @param RequestHTTP $RequestHTTP {RequestHTTP of the request}
-     * @param View        $View        {View should be used in the request}
-     * @param array       $parameters  {Request parameters}
+     * @param View  $View       {View should be used in the request}
+     * @param array $parameters {Request parameters}
      *
      * @return string
      * @access private
      */
     private static function _userGuide(
-        \helper\RequestHTTP $RequestHTTP,
         \standard\View $View,
         array $parameters = null
     ) {
@@ -114,6 +78,12 @@ abstract class System implements \standard\IController
             'profile'       => 'all',
             'views'         => array('json', 'xml'),
             'functionality' => 'Exibe o guia do usuário da API'
+        );
+        $doc['/profile']['GET'] = array(
+            'needs'         => 'nothing',
+            'profile'       => 'all',
+            'views'         => array('json', 'xml'),
+            'functionality' => 'Listagem dos perfis do sistema'
         );
         
         // Show the response

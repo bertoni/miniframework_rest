@@ -20,7 +20,10 @@ if (helper\Slug::isNeedToAddRoutes($Cache)) {
         'api',
         'user-guide',
         '/',
-        array('controller' => 'System', 'action' => 'userGuide')
+        array('GET'),
+        array(
+            'GET' => array('controller' => 'System', 'action' => 'userGuide')
+        )
     );
     helper\Slug::saveRoutes($Cache);
 }
